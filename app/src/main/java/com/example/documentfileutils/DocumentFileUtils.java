@@ -39,7 +39,7 @@ public class DocumentFileUtils {
      */
     public DocumentFileUtils(Context context, String permissionDir) {
         this.permissionPath = addSlash(permissionDir);
-        this.permissionUriStr = pathToUriStr(permissionDir);
+        this.permissionUriStr = pathToUri(permissionDir);
         this.context = context;
 
         // 错误时提示
@@ -154,6 +154,13 @@ public class DocumentFileUtils {
     }
 
     /**
+     * 获取权限目录的DocumentFile对象
+     */
+    public DocumentFile getPermissionDocumentFile() {
+        return DocumentFile.fromTreeUri(context, Uri.parse(permissionUriStr));
+    }
+
+    /**
      * 获取某文件或者目录的DocumentFile对象
      *
      * @param filePath 目录或者文件路径
@@ -165,7 +172,7 @@ public class DocumentFileUtils {
         filePath = addSlash(filePath);
 
         // 将文件路径转换为uri地址
-        String _uriPathStr = pathToUriStr(filePath);
+        String _uriPathStr = pathToUri(filePath);
 
         // 文件uri地址为空或者文件不属于权限目录时
         if (_uriPathStr == null || !_uriPathStr.startsWith(permissionUriStr)) return null;
@@ -459,7 +466,7 @@ public class DocumentFileUtils {
      * @param path 文件路径，注意一定要传入文件的完整的绝对路径
      * @return 格式化后的Uri地址字符串
      */
-    private String pathToUriStr(String path) {
+    private String pathToUri(String path) {
         // 在头尾添加斜杠
         path = addSlash(path);
 
@@ -511,5 +518,37 @@ public class DocumentFileUtils {
             return uriHeader + rootPathName + "%3A" + pathContent;
         }
         return null;
+    }
+
+    public String uriToPath(Uri uri) {
+        return uriToPath(uri.toString());
+    }
+
+    public String uriToPath(String uriStr) {
+        String colon = "%3A";   // %3A代表冒号
+        String slash = "%2F";   // %2F代表斜杠
+
+        // uri地址头，任何一个Uri地址都要包含这个地址头
+        String uriHeader = "content://com.android.externalstorage.documents/tree/";
+        if (!uriStr.startsWith(uriHeader)) return uriHeader;
+
+        // 截取目录分支
+        String dirBranch = uriStr.substring(uriHeader.length(), uriStr.indexOf(colon));
+
+        String branchPath;
+        String dirBranchHead = "/document/" + dirBranch + colon;
+        if (uriStr.contains(dirBranchHead)) {
+            branchPath = uriStr.substring(uriStr.indexOf(dirBranchHead) + dirBranchHead.length()).replaceAll(slash, "/");
+        } else {
+            // 得到在内存中的储存路径
+            branchPath = uriStr.substring(uriStr.indexOf(colon)+ colon.length()).replaceAll(slash, "/");
+        }
+
+        // 判断目录是否是Android内置SD卡下的目录，如果是将primary替换为emulated/0，primary表示主目录
+        if (dirBranch.equals("primary"))
+            dirBranch = "emulated/0";
+
+        // 得到真实路径
+        return "/storage/" + dirBranch + "/" + branchPath;
     }
 }
