@@ -13,7 +13,9 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.RequiresApi;
 import androidx.documentfile.provider.DocumentFile;
+import androidx.fragment.app.Fragment;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -24,14 +26,32 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public class DocumentFileUtils {
-    private static final String TAG = "DocumentFileUtils";
-
-    private final String permissionPath;    // 请求权限的目录地址（如：storage/sdcard/test）
-    private final String permissionUriStr;  // 请求权限的目录的uri地址（该Uri地址仅用于申请权限）
-
-    private final Context context;          // 上下文
+    private static final String TAG = DocumentFileUtils.class.getSimpleName();
 
     private int requestCode;                // 请求码
+    private final Context context;          // 上下文
+
+    private final String URI_HEAD;          // uri地址头，任何一个DocumentFile的Uri地址都包含这个地址头
+
+    private final String permissionPath;    // 请求权限的目录地址（如：storage/sdcard/test）
+    private final String permissionUriStr;  // 请求权限的目录的uri地址（该Uri地址仅用于申请权限，切勿直接操作）
+
+    public final static String PRIMARY_STORAGE;     // 主储存目录:   /storage/emulated/0
+    public final static String ANDROID_PATH;        // Android目录: /storage/emulated/0/Android
+    public final static String ANDROID_DATA_PATH;   // data目录:    /storage/emulated/0/Android/data
+    public final static String ANDROID_OBB_PATH;    // obb目录:     /storage/emulated/0/Android/obb
+
+    {
+        URI_HEAD = "content://com.android.externalstorage.documents/tree/";
+    }
+
+    static {
+        // 一般来说主储存目录是/storage/emulated/0
+        PRIMARY_STORAGE = Environment.getExternalStorageDirectory().getAbsolutePath();
+        ANDROID_PATH = PRIMARY_STORAGE + "/Android";
+        ANDROID_DATA_PATH = ANDROID_PATH + "/data";
+        ANDROID_OBB_PATH = ANDROID_PATH + "/obb";
+    }
 
     /**
      * @param context       上下文
@@ -45,6 +65,29 @@ public class DocumentFileUtils {
         // 错误时提示
         if (this.permissionUriStr == null)
             Log.e(TAG, "DocumentFileUtils: root directory permissionDir field");
+    }
+
+    /**
+     * 是否拥有所有文件访问权限，安卓11之前无需申请
+     */
+    public boolean isAllFilePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        return true;
+    }
+
+    /**
+     * 申请所有文件访问权限，安卓11之前无需申请
+     *
+     * @param activity    上下文
+     * @param requestCode 请求权限请求码
+     */
+    @SuppressLint("InlinedApi")
+    public void requestAllFilePermission(Activity activity, int requestCode) {
+        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+        intent.setData(Uri.parse("package:" + activity.getPackageName()));
+        activity.startActivityForResult(intent, requestCode);
     }
 
     /**
@@ -63,22 +106,26 @@ public class DocumentFileUtils {
     }
 
     /**
-     * 是否拥有所有文件访问权限，安卓11之前无需申请
+     * 请求所传入目录的访问权限
+     *
+     * @param activity    调用的activity
+     * @param requestCode 请求码
      */
-    public boolean isAllFilePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return Environment.isExternalStorageManager();
-        }
-        return true;
+    public void requestPermission(Activity activity, int requestCode) {
+        requestPermission(activity, null, requestCode);
     }
 
     /**
      * 请求所传入目录的访问权限
      *
-     * @param activity    上下文
+     * @param fragment    调用的fragment
      * @param requestCode 请求码
      */
-    public void requestPermission(Activity activity, int requestCode) {
+    public void requestPermission(Fragment fragment, int requestCode) {
+        requestPermission(null, fragment, requestCode);
+    }
+
+    public void requestPermission(Activity activity, Fragment fragment, int requestCode) {
         if (permissionUriStr == null) { // 请求权限的目录的uri地址错误
             Log.e(TAG, "requestPermission: permission directory path field");
             return;
@@ -96,17 +143,26 @@ public class DocumentFileUtils {
         // 通过Uri对象得到DocumentFile对象，该对象只能在申请权限时使用，不可以直接读写，权限目录除外
         DocumentFile documentFile = DocumentFile.fromTreeUri(this.context, uriPath);
         if (documentFile != null) {
-            uriPath = documentFile.getUri();
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                    | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
-            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, uriPath);
-            activity.startActivityForResult(intent, requestCode);
+            Intent intent = createIntent(documentFile);
+            if (activity != null) {
+                activity.startActivityForResult(intent, requestCode);
+            } else {
+                fragment.startActivityForResult(intent, requestCode);
+            }
         } else {
             Log.e(TAG, "requestPermission: " + permissionUriStr + " not exists");
         }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public Intent createIntent(DocumentFile documentFile) {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+        intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, documentFile.getUri());
+        return intent;
     }
 
     /**
@@ -138,19 +194,6 @@ public class DocumentFileUtils {
         } else {
             Log.e(TAG, "savePermission: requestCode field");
         }
-    }
-
-    /**
-     * 申请所有文件访问权限，安卓11之前无需申请
-     *
-     * @param activity    上下文
-     * @param requestCode 请求权限请求码
-     */
-    @SuppressLint("InlinedApi")
-    public void requestAllFilePermission(Activity activity, int requestCode) {
-        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-        intent.setData(Uri.parse("package:" + activity.getPackageName()));
-        activity.startActivityForResult(intent, requestCode);
     }
 
     /**
@@ -470,70 +513,83 @@ public class DocumentFileUtils {
         // 在头尾添加斜杠
         path = addSlash(path);
 
-        // 定义路径头规范
-        String pathHead = "/storage/";
-        // 如果开头不是/storage/，说明路径不对
-        if (path.startsWith(pathHead)) {
-            // 这一步去除路径头/storage/
-            // 例1：/storage/6238-3332/Android/ => 6238-3332/Android/
-            // 例2：/storage/6238-3332/ => 6238-3332/
-            // 例3：/storage/emulated/0/Android/data/ => emulated/0/Android/data/
-            String pathContent = path.substring(pathHead.length());
+        // 定义路径头规范，一般路径头是/storage/
+        // 例1：/storage/6238-3332/               => /storage/
+        // 例2：/storage/6238-3332/Android/       => /storage/
+        // 例3：/storage/emulated/0/Android/data/ => /storage/
+        String pathHead = PRIMARY_STORAGE.substring(0, PRIMARY_STORAGE.indexOf("/", 1) + 1);
+        // 如果传入的路径头与规范头不同，说明路径不对
+        if (!path.startsWith(pathHead)) return null;
 
-            // 如果传入的目录是Android内置SD卡下的目录，将emulated/0替换为primary，表示主目录
-            // 例1：emulated/0/Android/data/ => primary/Android/data/
-            if (pathContent.startsWith("emulated/0"))
-                pathContent = "primary" + pathContent.substring("emulated/0".length());
+        // 这一步去除路径头，假设规范路径头是/storage/
+        // 例1：/storage/6238-3332/               => 6238-3332/
+        // 例2：/storage/6238-3332/Android/       => 6238-3332/Android/
+        // 例3：/storage/emulated/0/Android/data/ => emulated/0/Android/data/
+        String pathContent = path.substring(pathHead.length());
 
-            // 拿到储存器目录的目录名
-            // 理论上讲，所传入的目录路径中，/storage/的子目录就是储存器（外置TF卡、内置SD卡都称为储存器）目录的目录名
-            // 例1：6238-3332/Android/ => 6238-3332
-            // 例2：6238-3332/ => 6238-3332
-            // 例3：primary/Android/data/ => primary
-            String rootPathName = pathContent.substring(0, pathContent.indexOf("/"));
+        // 取/storage/下的主储存目录，一般主储存目录是emulated/0，不需要考虑路径头不属于主储存目录的情况
+        // 例1：/storage/emulated/0 => emulated/0
+        String primaryPath = PRIMARY_STORAGE.substring(pathHead.length());
 
-            // 从路径中剔除储存器目录
-            // 例1：6238-3332/Android/ => Android/
-            // 例2：6238-3332/ => /
-            // 例3：primary/Android/data/ => Android/data/
-            pathContent = pathContent.substring(rootPathName.length() + 1);
+        // 如果传入的目录是Android内置SD卡下的主目录，假设主目录是emulated/0，将传入路径中的emulated/0替换为primary
+        // 例1：emulated/0/Android/data/ => primary/Android/data/
+        if (pathContent.startsWith(primaryPath))
+            pathContent = "primary" + pathContent.substring(primaryPath.length());
 
-            // 去除末尾的“/”
-            // 例1：Android/ => Android
-            // 例2：/ =>
-            // 例3：Android/data/ => Android/data
-            if (pathContent.endsWith("/"))
-                pathContent = pathContent.substring(0, pathContent.length() - 1);
+        // 拿到储存器目录的目录名
+        // 理论上讲，所传入的目录路径中，/storage/的直接子目录就是储存器（外置TF卡、内置SD卡都称为储存器）目录的目录名
+        // 例1：6238-3332/            => 6238-3332
+        // 例2：6238-3332/Android/    => 6238-3332
+        // 例3：primary/Android/data/ => primary
+        String rootPathName = pathContent.substring(0, pathContent.indexOf("/"));
 
-            // 将目录路径中的/全部替换为%2F
-            // 例1：Android => Android
-            // 例1： =>
-            // 例2：Android/data => Android%2Fdata
-            pathContent = pathContent.replaceAll("/", "%2F");
+        // 从路径中剔除储存器目录
+        // 例1：6238-3332/            => /
+        // 例2：6238-3332/Android/    => Android/
+        // 例3：primary/Android/data/ => Android/data/
+        pathContent = pathContent.substring(rootPathName.length() + 1);
 
-            // uri地址头，任何一个Uri地址都要包含这个地址头
-            String uriHeader = "content://com.android.externalstorage.documents/tree/";
+        // 去除末尾的“/”
+        // 例1：/             =>
+        // 例2：Android/      => Android
+        // 例3：Android/data/ => Android/data
+        if (pathContent.endsWith("/"))
+            pathContent = pathContent.substring(0, pathContent.length() - 1);
 
-            // 得到完整Uri地址
-            return uriHeader + rootPathName + "%3A" + pathContent;
-        }
-        return null;
+        // 将目录路径中的/全部替换为%2F
+        // 例1：              =>
+        // 例2：Android       => Android
+        // 例2：Android/data  => Android%2Fdata
+        pathContent = pathContent.replaceAll("/", "%2F");
+
+        // 得到完整Uri地址
+        return URI_HEAD + rootPathName + "%3A" + pathContent;
     }
 
+    /**
+     * 将Uri地址为普通文件路径
+     *
+     * @param uri uri地址
+     * @return 普通文件路径
+     */
     public String uriToPath(Uri uri) {
         return uriToPath(uri.toString());
     }
 
+    /**
+     * 将Uri地址为普通文件路径
+     *
+     * @param uriStr uri地址
+     * @return 普通文件路径
+     */
     public String uriToPath(String uriStr) {
         String colon = "%3A";   // %3A代表冒号
         String slash = "%2F";   // %2F代表斜杠
 
-        // uri地址头，任何一个Uri地址都要包含这个地址头
-        String uriHeader = "content://com.android.externalstorage.documents/tree/";
-        if (!uriStr.startsWith(uriHeader)) return uriHeader;
+        if (!uriStr.startsWith(URI_HEAD)) return URI_HEAD;
 
         // 截取目录分支
-        String dirBranch = uriStr.substring(uriHeader.length(), uriStr.indexOf(colon));
+        String dirBranch = uriStr.substring(URI_HEAD.length(), uriStr.indexOf(colon));
 
         String branchPath;
         String dirBranchHead = "/document/" + dirBranch + colon;
