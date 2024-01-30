@@ -20,12 +20,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import xyz.xxin.xaf.XAFUtil;
+
 public class MainActivity extends AppCompatActivity {
 
-    private DocumentFileUtils documentFileUtils;
+    private XAFUtil xafUtil;
 
-    private final int REUQEST_CODE = 10001;
-    private final int REUQEST_ALL_FILE_CODE = 10002;
+    private final int REQUEST_CODE = 10001;
+    private final int REQUEST_ALL_FILE_CODE = 10002;
 
     private EditText input_path;
     private Button is_permission;
@@ -72,34 +74,34 @@ public class MainActivity extends AppCompatActivity {
     private void addListener() {
         is_permission.setOnClickListener(view -> {
             String string = initData();
-            toast(string + "是否拥有访问权限 = " + documentFileUtils.isPermission());
+            toast(string + "是否拥有访问权限 = " + xafUtil.isPermission());
         });
 
         request_permission.setOnClickListener(view -> {
             initData();
-            documentFileUtils.requestPermission(this, REUQEST_CODE);
+            xafUtil.requestPermission(this, REQUEST_CODE);
         });
 
         is_all_permission.setOnClickListener(view ->
-                toast("是否拥有所有文件访问权限 = " + documentFileUtils.isAllFilePermission()));
+                toast("是否拥有所有文件访问权限 = " + xafUtil.isManagerExternalPermission()));
 
         request_all_permission.setOnClickListener(view ->
-                documentFileUtils.requestAllFilePermission(this, REUQEST_ALL_FILE_CODE));
+                xafUtil.requestManagerExternalPermission(this, REQUEST_ALL_FILE_CODE));
 
         create_folder.setOnClickListener(view -> {
             String string = initData();
-            documentFileUtils.createDirectory(string + "/test");
+            xafUtil.createFolder(string + "/test");
         });
 
         create_file.setOnClickListener(view -> {
             String string = initData();
-            documentFileUtils.createFile(string + "/test/test.txt");
+            xafUtil.createFile(string + "/test/test.txt");
         });
 
         write_file.setOnClickListener(view -> {
             String string = initData();
             String text = "测试内容";
-            OutputStream outputStream = documentFileUtils.getOutputStream(string + "/test/test.txt");
+            OutputStream outputStream = xafUtil.getOutputStream(string + "/test/test.txt");
             try {
                 outputStream.write(text.getBytes());
             } catch (IOException e) {
@@ -109,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
 
         read_file.setOnClickListener(view -> {
             String string = initData();
-            InputStream inputStream = documentFileUtils.getInputStream(string + "/test/test.txt");
+            InputStream inputStream = xafUtil.getInputStream(string + "/test/test.txt");
             byte[] buffer = new byte[1024];
             int len;
             StringBuilder stringBuilder = new StringBuilder();
@@ -133,38 +135,38 @@ public class MainActivity extends AppCompatActivity {
 
         copy_file1.setOnClickListener(view -> {
             String string = initData();
-            DocumentFile documentFile = documentFileUtils.getDocumentFile(string + "/test/test.txt", true);
-            DocumentFile documentFile2 = documentFileUtils.getDocumentFile(string + "/test/test2.txt", true);
-            documentFileUtils.copyFile(documentFile, documentFile2);
+            DocumentFile documentFile = xafUtil.getDocumentFile(string + "/test/test.txt", true);
+            DocumentFile documentFile2 = xafUtil.getDocumentFile(string + "/test/test2.txt", true);
+            xafUtil.copyFile(documentFile, documentFile2);
         });
 
         copy_file2.setOnClickListener(view -> {
             String string = initData();
-            DocumentFile documentFile = documentFileUtils.getDocumentFile(string + "/test/test.txt", true);
+            DocumentFile documentFile = xafUtil.getDocumentFile(string + "/test/test.txt", true);
             File file = new File(Environment.getExternalStorageDirectory() + "/test.txt");
-            documentFileUtils.copyFile(documentFile, file);
+            xafUtil.copyFile(documentFile, file);
         });
 
         copy_file3.setOnClickListener(view -> {
             String string = initData();
-            DocumentFile documentFile = documentFileUtils.getDocumentFile(string + "/test/test3.txt", true);
+            DocumentFile documentFile = xafUtil.getDocumentFile(string + "/test/test3.txt", true);
             File file = new File(Environment.getExternalStorageDirectory() + "/test.txt");
-            documentFileUtils.copyFile(file, documentFile);
+            xafUtil.copyFile(file, documentFile);
         });
 
         rename_file.setOnClickListener(view -> {
             String string = initData();
-            documentFileUtils.renameFile(string + "/test/test.txt", true, "test_rename");
+            xafUtil.renameFile(string + "/test/test.txt", true, "test_rename");
         });
 
         delete_file.setOnClickListener(view -> {
             String string = initData();
-            documentFileUtils.deleteFile(string + "/test", false);
+            xafUtil.deleteFile(string + "/test", false);
         });
     }
 
     private String initData() {
-        documentFileUtils = new DocumentFileUtils(this, input_path.getText().toString());
+        xafUtil = XAFUtil.create(this, input_path.getText().toString());
         return input_path.getText().toString();
     }
 
@@ -196,7 +198,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        documentFileUtils.savePermission(requestCode, data);
+        xafUtil.savePermission(requestCode, data);
     }
 }
 
