@@ -16,6 +16,6 @@ dependencyResolutionManagement {
         maven { url 'https://jitpack.io' }
     }
 }
-rootProject.name = "DocumentFileUtils"
+rootProject.name = "SAFUtilTest"
 include ':app'
-include ':XAF'
+include ':SAF'

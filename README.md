@@ -1,4 +1,4 @@
-DocumentFileUtils
+SAFUtil
 ===============
 
 ## 使用范围
@@ -33,11 +33,11 @@ dependencyResolutionManagement {
 }
 ```
 
-远程仓库配置之后，即可在模块的`build.gradle`中引入`FileSelector`
+远程仓库配置之后，即可在模块的`build.gradle`中引入`SAFUtil`
 
 ```sh
 dependencies {
-    implementation 'com.github.xxinPro:DocumentFileUtils:1.0'
+    implementation 'com.github.xxinPro:SAFUtil:1.0'
 }
 ```
 
@@ -48,7 +48,7 @@ dependencies {
 通过`XAFUtil.create(Context, String)`方法创建一个`XAFUtil`对象，第一个参数不议，第二个参数代表你想要访问的文件目录地址，下文中称作“权限目录”
 
 ```java
-XAFUtil xafUtil = XAFUtil.create(context, "/storage/emulated/0/Android/data/com.test.folder");
+SAFUtil safUtil = SAFUtil.create(context, "/storage/emulated/0/Android/data/com.test.folder");
 ```
 
 ### 所有文件访问权限

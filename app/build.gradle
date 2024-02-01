@@ -6,7 +6,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.documentfileutils"
+        applicationId "com.example.xafutiltest"
         minSdk 16
         targetSdk 34
         versionCode 1
@@ -35,7 +35,11 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
-    // implementation 'com.local.xxinPro:XAFUtil:1.0'
+    // 引入模块
+    implementation project(':SAF')
+    // 引入本地maven仓库
+    // implementation 'com.local.xxinPro:SAFUtil:1.0'
+    // 引入远程maven仓库
+    // implementation 'com.github.xxinPro:SAFUtil:1.0'
 
-    implementation project(':XAF')
 }

@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.example.documentfileutils",
+  "applicationId": "com.example.xafutiltest",
   "variantName": "release",
   "elements": [
     {
