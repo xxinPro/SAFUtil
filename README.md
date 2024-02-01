@@ -45,7 +45,7 @@ dependencies {
 
 ### 获取操作对象
 
-通过`XAFUtil.create(Context, String)`方法创建一个`XAFUtil`对象，第一个参数不议，第二个参数代表你想要访问的文件目录地址，下文中称作“权限目录”
+通过`SAFUtil.create(Context, String)`方法创建一个`SAFUtil`对象，第一个参数不议，第二个参数代表你想要访问的文件目录地址，下文中称作“权限目录”
 
 ```java
 SAFUtil safUtil = SAFUtil.create(context, "/storage/emulated/0/Android/data/com.test.folder");
@@ -62,7 +62,7 @@ SAFUtil safUtil = SAFUtil.create(context, "/storage/emulated/0/Android/data/com.
 
 ### 权限目录访问权限
 
-创建`XAFUtil`对象时，第二个参数代表称作“权限目录”
+创建`SAFUtil`对象时，第二个参数代表“权限目录”
 
 | 方法名                                                   | 作用                                |
 |-------------------------------------------------------|-----------------------------------|
