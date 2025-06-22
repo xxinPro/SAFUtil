@@ -144,22 +144,24 @@ public class SAFUtil {
             Log.e(TAG, "requestPermission: sdk version too low");
             return;
         }
-
-        // 请求码
-        this.requestCode = requestCode;
+        
         // 将请求权限的目录的uri地址转换为Uri对象
         Uri uriPath = Uri.parse(permissionUriStr);
         // 通过Uri对象得到DocumentFile对象，该对象只能在申请权限时使用，不可以直接读写，权限目录除外
         DocumentFile documentFile = DocumentFile.fromTreeUri(this.context, uriPath);
-        if (documentFile != null) {
-            Intent intent = createIntent(documentFile);
-            if (activity != null) {
-                activity.startActivityForResult(intent, requestCode);
-            } else {
-                fragment.startActivityForResult(intent, requestCode);
-            }
-        } else {
+        if (documentFile == null) {
             Log.e(TAG, "requestPermission: " + permissionUriStr + " not exists");
+            return;
+        }
+
+        // 请求码
+        this.requestCode = requestCode;
+        
+        Intent intent = createIntent(documentFile);
+        if (activity != null) {
+            activity.startActivityForResult(intent, requestCode);
+        } else {
+            fragment.startActivityForResult(intent, requestCode);
         }
     }
 
@@ -183,26 +185,31 @@ public class SAFUtil {
     @SuppressLint("WrongConstant")
     public void savePermission(int requestCode, Intent intent) {
         if (intent == null) return;
-        if (this.requestCode == requestCode) {
-            Uri uri = intent.getData();
-            if (uri != null) {
-                DocumentFile documentFile = DocumentFile.fromTreeUri(context, uri);
-                if (documentFile != null && documentFile.canWrite()) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                        this.context.getContentResolver().takePersistableUriPermission(uri,
-                                intent.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION));
-                    } else {
-                        Log.e(TAG, "savePermission: sdk version too low");
-                    }
-                } else {
-                    Log.e(TAG, "savePermission: no write permission");
-                }
-            } else {
-                Log.e(TAG, "savePermission: data uri field");
-            }
-        } else {
+        
+        if (this.requestCode != requestCode) {
             Log.e(TAG, "savePermission: requestCode field");
+            return;
         }
+        
+        Uri uri = intent.getData();
+        if (uri == null) {
+            Log.e(TAG, "savePermission: data uri field");
+            return;
+        }
+        
+        DocumentFile documentFile = DocumentFile.fromTreeUri(context, uri);
+        if (documentFile == null || !documentFile.canWrite()) {
+            Log.e(TAG, "savePermission: no write permission");
+            return;
+        }
+        
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            Log.e(TAG, "savePermission: sdk version too low");
+            return;
+        }
+        
+        this.context.getContentResolver().takePersistableUriPermission(uri,
+                intent.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION));
     }
 
     /**
